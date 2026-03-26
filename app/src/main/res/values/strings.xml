@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">ScanProduto</string>
+    <string name="hint_codigo">Digite ou escaneie o código EAN</string>
+    <string name="buscar">Buscar</string>
+    <string name="iniciar_scanner">Scanner</string>
+    <string name="parar_scanner">Parar</string>
+    <string name="nova_consulta">Nova Consulta</string>
+    <string name="instrucoes">Escaneie um código de barras\nou digite o código EAN acima</string>
+    <string name="estoque_label">Estoque: %d un</string>
+    <string name="codigo_label">Código: %s</string>
+    <string name="ean_label">EAN: %s</string>
+    <string name="cache_info">Cache local: %d produtos</string>
+</resources>

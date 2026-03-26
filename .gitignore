@@ -1,0 +1,40 @@
+# Android Studio
+*.iml
+.gradle/
+.idea/
+local.properties
+*.DS_Store
+
+# Claude Code
+.claude/
+
+# APKs na raiz
+*.apk
+
+# Build outputs
+/build/
+app/build/
+app/release/
+
+# APK gerados (mantém apenas o da raiz)
+app/build/outputs/
+
+# Keystore (segurança)
+*.jks
+*.keystore
+
+# Gradle cache
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
+# Python cache (mock server)
+__pycache__/
+*.pyc
+*.pyo
