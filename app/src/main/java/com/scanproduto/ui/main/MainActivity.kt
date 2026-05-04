@@ -5,10 +5,15 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.text.Editable
 import android.text.InputType
+import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.LayoutInflater
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,11 +23,16 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.scanproduto.R
+import com.scanproduto.data.local.PreferencesManager
 import com.scanproduto.databinding.ActivityMainBinding
+import com.scanproduto.databinding.DialogBuscaDescricaoBinding
+import com.scanproduto.databinding.ItemProdutoResultadoBinding
 import com.scanproduto.model.Produto
 import com.scanproduto.model.Resource
 import com.scanproduto.ui.settings.SettingsActivity
@@ -43,6 +53,7 @@ class MainActivity : AppCompatActivity() {
 
     private var cameraExecutor: ExecutorService? = null
     private var cameraProvider: ProcessCameraProvider? = null
+    private lateinit var prefsManager: PreferencesManager
 
     // Launcher para permissão de câmera
     private val permissaoCameraLauncher = registerForActivityResult(
@@ -68,6 +79,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
+        prefsManager = PreferencesManager(this)
         configurarObservers()
         configurarListeners()
 
@@ -138,6 +150,100 @@ class MainActivity : AppCompatActivity() {
             viewModel.limparEstado()
             binding.etCodigo.setText("")
         }
+
+        // Botão busca por descrição
+        binding.btnBuscaDescricao.setOnClickListener {
+            abrirDialogBuscaDescricao()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val config = prefsManager.carregarConfig()
+        binding.btnBuscaDescricao.visibility =
+            if (config.habilitarBuscaPorDescricao) View.VISIBLE else View.GONE
+    }
+
+    private fun abrirDialogBuscaDescricao() {
+        val dialogBinding = DialogBuscaDescricaoBinding.inflate(LayoutInflater.from(this))
+        val adapter = ProdutoResultadoAdapter { produto ->
+            // Preenche EAN e aciona busca
+            binding.etCodigo.setText(produto.ean)
+            viewModel.buscarProduto(produto.ean)
+        }
+
+        dialogBinding.rvResultados.layoutManager = LinearLayoutManager(this)
+        dialogBinding.rvResultados.adapter = adapter
+
+        val dialog = AlertDialog.Builder(this, R.style.DialogClaro)
+            .setTitle("Buscar por Descrição")
+            .setView(dialogBinding.root)
+            .setNegativeButton("Fechar") { d, _ ->
+                d.dismiss()
+                viewModel.limparResultadosBusca()
+            }
+            .create()
+
+        // Observa resultados
+        viewModel.resultadosBusca.observe(this) { state ->
+            when (state) {
+                is Resource.Loading -> {
+                    dialogBinding.progressBusca.visibility = View.VISIBLE
+                    dialogBinding.rvResultados.visibility = View.GONE
+                    dialogBinding.tvNenhumResultado.visibility = View.GONE
+                }
+                is Resource.Success -> {
+                    dialogBinding.progressBusca.visibility = View.GONE
+                    adapter.atualizar(state.data)
+                    dialogBinding.rvResultados.visibility = View.VISIBLE
+                    dialogBinding.tvNenhumResultado.visibility = View.GONE
+                    // Fecha dialog e busca ao selecionar
+                }
+                is Resource.Error -> {
+                    dialogBinding.progressBusca.visibility = View.GONE
+                    dialogBinding.rvResultados.visibility = View.GONE
+                    dialogBinding.tvNenhumResultado.visibility = View.VISIBLE
+                    dialogBinding.tvNenhumResultado.text = state.message
+                }
+                else -> {
+                    dialogBinding.progressBusca.visibility = View.GONE
+                    dialogBinding.rvResultados.visibility = View.GONE
+                    dialogBinding.tvNenhumResultado.visibility = View.GONE
+                }
+            }
+        }
+
+        // Busca com debounce enquanto digita
+        val handler = Handler(Looper.getMainLooper())
+        var runnable: Runnable? = null
+        dialogBinding.etBuscaDescricao.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                runnable?.let { handler.removeCallbacks(it) }
+                runnable = Runnable {
+                    val termo = s?.toString() ?: ""
+                    if (termo.length >= 2) viewModel.buscarPorDescricao(termo)
+                    else viewModel.limparResultadosBusca()
+                }
+                handler.postDelayed(runnable!!, 500)
+            }
+        })
+
+        // Ao fechar o dialog, remove o observer e limpa resultados
+        dialog.setOnDismissListener {
+            viewModel.resultadosBusca.removeObservers(this)
+            viewModel.limparResultadosBusca()
+        }
+
+        // Adapter item click fecha o dialog
+        adapter.onItemClick = { produto ->
+            dialog.dismiss()
+            binding.etCodigo.setText(produto.ean)
+            viewModel.buscarProduto(produto.ean)
+        }
+
+        dialog.show()
     }
 
     /**
@@ -354,5 +460,45 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         cameraExecutor?.shutdown()
+    }
+
+    // Adapter para lista de resultados da busca por descrição
+    inner class ProdutoResultadoAdapter(
+        private val clickListener: (Produto) -> Unit
+    ) : RecyclerView.Adapter<ProdutoResultadoAdapter.ViewHolder>() {
+
+        var onItemClick: ((Produto) -> Unit)? = null
+        private val itens = mutableListOf<Produto>()
+
+        fun atualizar(lista: List<Produto>) {
+            itens.clear()
+            itens.addAll(lista)
+            notifyDataSetChanged()
+        }
+
+        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
+            val b = ItemProdutoResultadoBinding.inflate(
+                LayoutInflater.from(parent.context), parent, false
+            )
+            return ViewHolder(b)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            holder.bind(itens[position])
+        }
+
+        override fun getItemCount() = itens.size
+
+        inner class ViewHolder(private val b: ItemProdutoResultadoBinding) :
+            RecyclerView.ViewHolder(b.root) {
+            fun bind(produto: Produto) {
+                b.tvItemDescricao.text = produto.descricao
+                b.tvItemEan.text = produto.ean
+                b.tvItemPreco.text = FormatUtils.formatarPreco(produto.preco)
+                b.root.setOnClickListener {
+                    onItemClick?.invoke(produto) ?: clickListener(produto)
+                }
+            }
+        }
     }
 }

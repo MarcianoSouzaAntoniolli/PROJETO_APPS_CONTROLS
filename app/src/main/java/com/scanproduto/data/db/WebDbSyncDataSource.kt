@@ -109,6 +109,78 @@ class WebDbSyncDataSource {
     }
 
     /**
+     * Busca produtos por parte da descrição no PostgreSQL.
+     */
+    suspend fun buscarPorDescricao(termo: String, config: AppConfig): List<Produto> = withContext(Dispatchers.IO) {
+        var conn: Connection? = null
+        try {
+            conn = getConnection(config)
+
+            val filtroEmpresa = if (config.webDbEmpresaId.isNotBlank())
+                "AND P.${config.webDbCampoEmpresaId} = ?" else ""
+
+            // translate() normaliza acentos sem precisar de extensão no PostgreSQL
+            // Converte: áàãâä→a, éèêë→e, íìîï→i, óòõôö→o, úùûü→u, ç→c, ñ→n, ý→y
+            val acentsFrom = "áàãâäéèêëíìîïóòõôöúùûüçñý"
+            val acentsTo   = "aaaaaeeeeiiiiooooouuuucny"
+            val normDesc = { col: String ->
+                "translate(lower($col), '$acentsFrom', '$acentsTo')"
+            }
+
+            val sql = if (config.webDbUsarSinonimo) {
+                val descCol = "P.${config.webDbCampoDescricao}"
+                """
+                SELECT DISTINCT B.${config.webDbCampoSinonimoEan} AS ean_col,
+                       P.${config.webDbCampoCodigo},
+                       P.${config.webDbCampoDescricao},
+                       P.${config.webDbCampoEstoque},
+                       P.${config.webDbCampoPreco}
+                FROM ${config.webDbTabela} P
+                INNER JOIN ${config.webDbTabelaSinonimo} B
+                    ON (P.${config.webDbCampoChave} = B.${config.webDbCampoChave})
+                WHERE ${normDesc(descCol)} LIKE ${normDesc("?")} $filtroEmpresa
+                ORDER BY P.${config.webDbCampoDescricao} ASC LIMIT 30
+                """.trimIndent()
+            } else {
+                val descCol = config.webDbCampoDescricao
+                """
+                SELECT ${config.webDbCampoEan},
+                       ${config.webDbCampoCodigo},
+                       ${config.webDbCampoDescricao},
+                       ${config.webDbCampoEstoque},
+                       ${config.webDbCampoPreco}
+                FROM ${config.webDbTabela}
+                WHERE ${normDesc(descCol)} LIKE ${normDesc("?")} $filtroEmpresa
+                ORDER BY ${config.webDbCampoDescricao} ASC LIMIT 30
+                """.trimIndent()
+            }
+
+            val stmt = conn.prepareStatement(sql)
+            stmt.setString(1, "%$termo%")
+            if (config.webDbEmpresaId.isNotBlank()) stmt.setString(2, config.webDbEmpresaId)
+
+            val rs = stmt.executeQuery()
+            val lista = mutableListOf<Produto>()
+            val eanCol = if (config.webDbUsarSinonimo) "ean_col" else config.webDbCampoEan
+            while (rs.next()) {
+                lista.add(Produto(
+                    ean = rs.getString(eanCol) ?: "",
+                    codigo = rs.getString(config.webDbCampoCodigo) ?: "",
+                    descricao = rs.getString(config.webDbCampoDescricao) ?: "",
+                    estoque = rs.getInt(config.webDbCampoEstoque),
+                    preco = rs.getDouble(config.webDbCampoPreco),
+                    ultimaAtualizacao = System.currentTimeMillis()
+                ))
+            }
+            lista
+        } catch (t: Throwable) {
+            throw Exception("Erro na busca por descrição: ${t.message}")
+        } finally {
+            try { conn?.close() } catch (_: Throwable) {}
+        }
+    }
+
+    /**
      * Testa a conexão com o PostgreSQL.
      */
     suspend fun testarConexao(config: AppConfig): Boolean = withContext(Dispatchers.IO) {

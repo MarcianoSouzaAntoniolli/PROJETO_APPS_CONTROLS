@@ -38,6 +38,7 @@ class PreferencesManager(context: Context) {
         private const val KEY_WEB_DB_CAMPO_PRECO = "web_db_campo_preco"
         private const val KEY_WEB_DB_CAMPO_EMPRESA_ID = "web_db_campo_empresa_id"
         private const val KEY_WEB_DB_EMPRESA_ID = "web_db_empresa_id"
+        private const val KEY_HABILITAR_BUSCA_DESCRICAO = "habilitar_busca_descricao"
         private const val KEY_WEB_DB_USAR_SINONIMO = "web_db_usar_sinonimo"
         private const val KEY_WEB_DB_TABELA_SINONIMO = "web_db_tabela_sinonimo"
         private const val KEY_WEB_DB_CAMPO_SINONIMO_EAN = "web_db_campo_sinonimo_ean"
@@ -74,6 +75,7 @@ class PreferencesManager(context: Context) {
             putString(KEY_WEB_DB_CAMPO_PRECO, config.webDbCampoPreco)
             putString(KEY_WEB_DB_CAMPO_EMPRESA_ID, config.webDbCampoEmpresaId)
             putString(KEY_WEB_DB_EMPRESA_ID, config.webDbEmpresaId)
+            putBoolean(KEY_HABILITAR_BUSCA_DESCRICAO, config.habilitarBuscaPorDescricao)
             putBoolean(KEY_WEB_DB_USAR_SINONIMO, config.webDbUsarSinonimo)
             putString(KEY_WEB_DB_TABELA_SINONIMO, config.webDbTabelaSinonimo)
             putString(KEY_WEB_DB_CAMPO_SINONIMO_EAN, config.webDbCampoSinonimoEan)
@@ -114,6 +116,7 @@ class PreferencesManager(context: Context) {
             webDbCampoPreco = prefs.getString(KEY_WEB_DB_CAMPO_PRECO, "preco") ?: "preco",
             webDbCampoEmpresaId = prefs.getString(KEY_WEB_DB_CAMPO_EMPRESA_ID, "empresa_id") ?: "empresa_id",
             webDbEmpresaId = prefs.getString(KEY_WEB_DB_EMPRESA_ID, "") ?: "",
+            habilitarBuscaPorDescricao = prefs.getBoolean(KEY_HABILITAR_BUSCA_DESCRICAO, false),
             webDbUsarSinonimo = prefs.getBoolean(KEY_WEB_DB_USAR_SINONIMO, false),
             webDbTabelaSinonimo = prefs.getString(KEY_WEB_DB_TABELA_SINONIMO, "sinonimo") ?: "sinonimo",
             webDbCampoSinonimoEan = prefs.getString(KEY_WEB_DB_CAMPO_SINONIMO_EAN, "cod_barr") ?: "cod_barr",

@@ -100,6 +100,7 @@ class SettingsActivity : AppCompatActivity() {
         binding.etDbSenha.setText(config.dbSenha)
 
         // Opções gerais
+        binding.switchBuscaDescricao.isChecked = config.habilitarBuscaPorDescricao
         binding.switchCache.isChecked = config.usarCacheOffline
         binding.etCacheTtl.setText(config.cacheTtlMinutos.toString())
 
@@ -167,6 +168,7 @@ class SettingsActivity : AppCompatActivity() {
             dbNome = binding.etDbNome.text.toString().trim(),
             dbUsuario = binding.etDbUsuario.text.toString().trim(),
             dbSenha = binding.etDbSenha.text.toString(),
+            habilitarBuscaPorDescricao = binding.switchBuscaDescricao.isChecked,
             usarCacheOffline = binding.switchCache.isChecked,
             cacheTtlMinutos = cacheTtl,
             webDbUrl = binding.etWebDbUrl.text.toString().trim(),

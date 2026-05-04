@@ -65,6 +65,12 @@ interface ProdutoDao {
     suspend fun limparCacheExpirado(timestampMinimo: Long)
 
     /**
+     * Busca produtos por parte da descrição no cache local
+     */
+    @Query("SELECT * FROM produtos WHERE descricao LIKE '%' || :termo || '%' ORDER BY descricao ASC LIMIT 30")
+    suspend fun buscarPorDescricao(termo: String): List<Produto>
+
+    /**
      * Remove todos os produtos do cache
      */
     @Query("DELETE FROM produtos")

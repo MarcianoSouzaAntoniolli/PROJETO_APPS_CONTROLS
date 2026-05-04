@@ -124,6 +124,19 @@ def salvar_produto():
     return jsonify(dados), 201
 
 
+@app.route("/produto/busca", methods=["GET"])
+def buscar_por_descricao():
+    """
+    Busca produtos por parte da descrição.
+    GET /produto/busca?descricao=termo
+    """
+    termo = request.args.get("descricao", "").lower().strip()
+    if not termo:
+        return jsonify([]), 200
+    resultados = [p for p in PRODUTOS_DB.values() if termo in p["descricao"].lower()]
+    return jsonify(resultados), 200
+
+
 @app.route("/produto/<string:ean>", methods=["PUT"])
 def atualizar_produto(ean):
     """

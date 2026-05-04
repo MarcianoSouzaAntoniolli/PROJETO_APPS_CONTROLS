@@ -38,3 +38,12 @@ Thumbs.db
 __pycache__/
 *.pyc
 *.pyo
+
+# ExpxAgents
+node_modules/
+.env
+.mcp.json
+*.tmp
+squads/*/state.json
+squads/*/state.json.tmp
+squads/*/output/

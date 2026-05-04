@@ -1,6 +1,7 @@
 package com.scanproduto.data.db
 
 import com.scanproduto.model.Produto
+import com.scanproduto.utils.TextoUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -15,6 +16,18 @@ class SQLiteDataSource(private val produtoDao: ProdutoDao) {
      */
     suspend fun buscarProdutoPorEan(ean: String): Produto? = withContext(Dispatchers.IO) {
         produtoDao.buscarPorEan(ean)
+    }
+
+    /**
+     * Busca produtos por parte da descrição no banco local.
+     * Insensível a acentuação: "racao", "ração" e "Racão" retornam os mesmos resultados.
+     */
+    suspend fun buscarPorDescricao(termo: String): List<Produto> = withContext(Dispatchers.IO) {
+        val termoNorm = TextoUtils.normalizar(termo)
+        produtoDao.listarTodos()
+            .filter { TextoUtils.normalizar(it.descricao).contains(termoNorm) }
+            .sortedBy { it.descricao }
+            .take(30)
     }
 
     /**

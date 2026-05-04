@@ -58,6 +58,15 @@ interface ProdutoApiService {
     ): Response<Produto>
 
     /**
+     * Busca produtos por parte da descrição
+     * GET /produto/busca?descricao=termo
+     */
+    @GET("produto/busca")
+    suspend fun buscarPorDescricao(
+        @Query("descricao") descricao: String
+    ): Response<List<Produto>>
+
+    /**
      * Envia lista de produtos em batch
      * POST /produtos/batch
      */

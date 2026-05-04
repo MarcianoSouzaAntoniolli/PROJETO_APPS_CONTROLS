@@ -42,6 +42,9 @@ data class AppConfig(
     // Caminho do arquivo TXT local
     val arquivoTxtPath: String = "",
 
+    // Busca por descrição
+    val habilitarBuscaPorDescricao: Boolean = false,
+
     // Cache offline ativo
     val usarCacheOffline: Boolean = true,
 

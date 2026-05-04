@@ -45,6 +45,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _totalCache = MutableLiveData<Int>(0)
     val totalCache: LiveData<Int> = _totalCache
 
+    // Resultados da busca por descrição
+    private val _resultadosBusca = MutableLiveData<Resource<List<com.scanproduto.model.Produto>>>(Resource.Empty)
+    val resultadosBusca: LiveData<Resource<List<com.scanproduto.model.Produto>>> = _resultadosBusca
+
     init {
         atualizarContadorCache()
     }
@@ -154,6 +158,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun definirArquivoTxt(uri: Uri) {
         repository.arquivoTxtUri = uri
+    }
+
+    /**
+     * Busca produtos por parte da descrição.
+     */
+    fun buscarPorDescricao(termo: String) {
+        if (termo.isBlank()) {
+            _resultadosBusca.value = Resource.Empty
+            return
+        }
+        viewModelScope.launch {
+            _resultadosBusca.value = Resource.Loading
+            _resultadosBusca.value = repository.buscarPorDescricao(termo.trim())
+        }
+    }
+
+    /**
+     * Limpa os resultados da busca por descrição.
+     */
+    fun limparResultadosBusca() {
+        _resultadosBusca.value = Resource.Empty
     }
 
     /**

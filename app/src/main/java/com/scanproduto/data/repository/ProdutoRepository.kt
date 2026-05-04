@@ -12,6 +12,7 @@ import com.scanproduto.model.AppConfig
 import com.scanproduto.model.FonteConexao
 import com.scanproduto.model.Produto
 import com.scanproduto.model.Resource
+import com.scanproduto.utils.TextoUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -278,6 +279,38 @@ class ProdutoRepository(
             }
         } catch (e: Exception) {
             Resource.Error("Erro ao consultar banco web: ${e.message}", e)
+        }
+    }
+
+    /**
+     * Busca produtos por parte da descrição na fonte configurada.
+     */
+    suspend fun buscarPorDescricao(termo: String): Resource<List<Produto>> {
+        val config = prefsManager.carregarConfig()
+        return try {
+            val lista = when (config.fonteConexao) {
+                FonteConexao.API -> {
+                    // Envia termo normalizado para maximizar compatibilidade com a API
+                    val termoApi = TextoUtils.normalizar(termo)
+                    val apiService = RetrofitClient.criarServico(config.apiBaseUrl)
+                    val response = apiService.buscarPorDescricao(termoApi)
+                    if (response.isSuccessful) response.body() ?: emptyList()
+                    else emptyList()
+                }
+                FonteConexao.BANCO_DADOS -> SQLiteDataSource(produtoDao).buscarPorDescricao(termo)
+                FonteConexao.ARQUIVO_TXT -> {
+                    // TXT importado fica no Room — usa o mesmo filtro normalizado do SQLiteDataSource
+                    SQLiteDataSource(produtoDao).buscarPorDescricao(termo)
+                }
+                FonteConexao.BANCO_WEB -> {
+                    if (config.webDbUrl.isBlank()) emptyList()
+                    else WebDbSyncDataSource().buscarPorDescricao(termo, config)
+                }
+            }
+            if (lista.isEmpty()) Resource.Error("Nenhum produto encontrado para \"$termo\"")
+            else Resource.Success(lista)
+        } catch (e: Exception) {
+            Resource.Error("Erro na busca: ${e.message}")
         }
     }
 
